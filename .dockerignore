@@ -1,0 +1,7 @@
+.git/
+.gitignore
+\#*
+.#*
+*~
+doc/
+build/

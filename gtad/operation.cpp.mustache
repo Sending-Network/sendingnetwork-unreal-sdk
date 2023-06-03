@@ -1,0 +1,156 @@
+{{>preamble}}
+#include <algorithm>
+
+#include "{{filenameBase}}.hpp"
+
+namespace Kazv::Api
+{
+{{#operations}}{{#operation}}
+
+  {{#headerParams?}}
+  std::map<std::string, std::string> {{camelCaseOperationId}}Job::buildHeader({{#headerParams}}{{>joinedParamDef}}{{/headerParams}})
+    {
+    std::map<std::string, std::string> h{};
+
+    {{#headerParams}}
+      {{#useOmittable}}
+        if ({{paramName}}.has_value()) {
+          h.insert_or_assign( "{{baseName}}"s, {{paramName}}.value() );
+        }
+      {{/useOmittable}}
+      {{^useOmittable}}
+        h.insert_or_assign( "{{baseName}}"s, {{paramName}} );
+      {{/useOmittable}}
+    {{/headerParams}}
+    return h;
+    }
+    {{/headerParams?}}
+BaseJob::Query {{camelCaseOperationId}}Job::buildQuery(
+{{#queryParams}}{{>joinedParamDef}}{{/queryParams}})
+{
+BaseJob::Query _q;
+{{#queryParams}}
+  {{#required?}}
+    addToQuery(_q, "{{baseName}}"s, {{paramName}});
+  {{/required?}}
+  {{^required?}}
+    addToQueryIfNeeded(_q, "{{baseName}}"s, {{paramName}});
+  {{/required?}}
+{{/queryParams}}
+return _q;
+}
+
+    BaseJob::Body {{camelCaseOperationId}}Job::buildBody({{#allParams}}{{>joinedParamDef}}{{/allParams}})
+      {
+      // ignore unused param
+      {{#allParams}}(void)({{paramName}});{{/allParams}}
+      {{#inlineBody}}{{^propertyMap}}{{^bodyParams?}}
+        return {{#consumesNonJson?}}FileDesc({{nameCamelCase}}){{/consumesNonJson?}}
+          {{^consumesNonJson?}}JsonBody({{nameCamelCase}}){{/consumesNonJson?}};
+          {{/bodyParams?}}{{/propertyMap}}{{/inlineBody}}
+      {{#bodyParams?}}
+        json _data
+        {{#inlineBody}}
+          ({{paramName}})
+        {{/inlineBody}};
+        {{#propertyMap}}
+          addPropertyMapToJson(_data, {{nameCamelCase}});
+        {{/propertyMap}}
+        {{#bodyParams}}
+          {{#required?}}
+            _data["{{baseName}}"s] = {{paramName}};
+          {{/required?}}
+          {{^required?}}
+            addToJsonIfNeeded(_data, "{{baseName}}"s, {{paramName}});
+          {{/required?}}
+        {{/bodyParams}}
+        return BaseJob::JsonBody(_data);
+        {{/bodyParams?}}
+        {{^bodyParams?}}
+          {{^inlineBody}}
+            {{^propertyMap?}}
+              return BaseJob::EmptyBody{};
+        {{/propertyMap?}}
+        {{/inlineBody}}
+        {{/bodyParams?}}
+
+      };
+
+      {{#producesNonJson?}}
+        const immer::array<std::string> {{camelCaseOperationId}}Job::expectedContentTypes{ {{#produces}}"{{_}}"{{>cjoin}}{{/produces}} };
+      {{/producesNonJson?}}
+
+{{camelCaseOperationId}}Job::{{camelCaseOperationId}}Job(
+        std::string serverUrl
+        {{^skipAuth}}, std::string _accessToken{{/skipAuth}}
+            {{#allParams?}},{{/allParams?}}
+        {{#allParams}}{{>joinedParamDef}}{{/allParams}}
+        {{#producesNonJson?}}, std::optional<FileDesc> downloadTo{{/producesNonJson?}})
+      : BaseJob(std::move(serverUrl),
+          std::string("{{basePathWithoutHost}}"){{#pathParts}} + {{_}}{{/pathParts}},
+          {{#_toupper}}{{httpMethod}}{{/_toupper}},
+          std::string("{{camelCaseOperationId}}"),
+          {{^skipAuth}}_accessToken{{/skipAuth}}{{#skipAuth}} {} {{/skipAuth}},
+          ReturnType::{{^producesNonJson?}}Json{{/producesNonJson?}}{{#producesNonJson?}}File{{/producesNonJson?}},
+            buildBody({{#allParams}}{{paramName}}{{>cjoin}}{{/allParams}})
+              , buildQuery({{#queryParams}}{{paramName}}{{>cjoin}}{{/queryParams}})
+                {{#headerParams?}}, buildHeader({{#headerParams}}
+                  {{paramName}}{{>cjoin}}
+                {{/headerParams}})
+{{/headerParams?}}{{^headerParams?}}, {}{{/headerParams?}}
+{{#producesNonJson?}}, downloadTo{{/producesNonJson?}}
+)
+        {
+        }
+
+        {{camelCaseOperationId}}Job {{camelCaseOperationId}}Job::withData(JsonWrap j) &&
+        {
+          auto ret = {{camelCaseOperationId}}Job(std::move(*this));
+          ret.attachData(j);
+          return ret;
+        }
+
+        {{camelCaseOperationId}}Job {{camelCaseOperationId}}Job::withData(JsonWrap j) const &
+        {
+          auto ret = {{camelCaseOperationId}}Job(*this);
+          ret.attachData(j);
+          return ret;
+        }
+
+        {{#responses}}
+        {{camelCaseOperationId}}Job::JobResponse::JobResponse(Response r)
+        : Response(std::move(r)) {}
+
+          bool {{camelCaseOperationId}}Response::success() const
+          {
+            return Response::success()
+            {{#producesNonJson?}}
+              && header.get().find("Content-Type") != header.get().end()
+              && contentTypeMatches(expectedContentTypes, header.get().at("Content-Type"))
+            {{/producesNonJson?}}
+            {{^producesNonJson?}}
+              && isBodyJson(body)
+              {{#normalResponse?}}{{#properties}}{{#required?}}
+            && jsonBody().get().contains("{{baseName}}"s)
+            {{/required?}}{{/properties}}{{/normalResponse?}}
+            {{/producesNonJson?}}
+          ;
+          }
+
+          {{#normalResponse?}}
+                {{#properties}}
+
+    {{!there's nothing in #properties if the response is inline}}
+    {{>qualifiedMaybeOmittableType}} {{camelCaseOperationId}}Response::{{paramName}}() const
+    {
+    if (jsonBody().get()
+    .contains("{{baseName}}"s)) {
+    return
+    jsonBody().get()["{{baseName}}"s]
+    .template get<{{dataType.name}}>();}
+    else { return {{>maybeOmittableType}}( {{defaultValue}} );}
+    }
+        {{/properties}}{{/normalResponse?}}{{/responses}}
+
+{{/operation}}{{/operations}}
+}

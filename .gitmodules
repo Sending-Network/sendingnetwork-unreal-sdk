@@ -1,0 +1,12 @@
+[submodule "external/lager"]
+	path = external/lager
+	url = https://github.com/arximboldi/lager.git
+[submodule "external/zug"]
+	path = external/zug
+	url = https://github.com/arximboldi/zug.git
+[submodule "external/immer"]
+	path = external/immer
+	url = https://github.com/arximboldi/immer.git
+[submodule "external/json"]
+	path = external/json
+	url = https://github.com/nlohmann/json.git

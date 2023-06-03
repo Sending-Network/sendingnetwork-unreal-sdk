@@ -1,0 +1,37 @@
+include(CMakeFindDependencyMacro)
+find_dependency(Boost REQUIRED COMPONENTS serialization)
+find_dependency(nlohmann_json)
+find_dependency(Immer)
+find_dependency(Zug)
+find_dependency(Lager)
+find_dependency(Olm)
+
+set(_oldCmakeModulePath ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}" ${CMAKE_MODULE_PATH})
+find_dependency(cryptopp)
+
+include("${CMAKE_CURRENT_LIST_DIR}/libkazvTargets.cmake")
+
+set(libkazvSupportedComponents job)
+
+foreach(_comp ${libkazv_FIND_COMPONENTS})
+  if (NOT ";${libkazvSupportedComponents};" MATCHES "${_comp}")
+    set(libkazv_FOUND False)
+    set(libkazv_NOT_FOUND_MESSAGE "Unsupported component by libkazv: ${_comp}. Supported components: ${libkazvSupportedComponents}")
+  endif()
+  include("${CMAKE_CURRENT_LIST_DIR}/libkazv-${_comp}Config.cmake"
+    OPTIONAL RESULT_VARIABLE _compFound)
+  if ("${_compFound}" STREQUAL "NOTFOUND")
+    set(libkazv_${_comp}_FOUND False)
+  else()
+    set(libkazv_${_comp}_FOUND True)
+  endif()
+  if (libkazv_FIND_REQUIRED_${_comp})
+    if ("${_compFound}" STREQUAL "NOTFOUND")
+      set(libkazv_FOUND False)
+      set(libkazv_NOT_FOUND_MESSAGE "Missing component: ${_comp}")
+    endif()
+  endif()
+endforeach()
+
+set(CMAKE_MODULE_PATH ${_oldCmakeModulePath})

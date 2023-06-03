@@ -1,0 +1,5 @@
+include(CMakeFindDependencyMacro)
+find_dependency(cpr)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_dependency(Threads)
+include("${CMAKE_CURRENT_LIST_DIR}/libkazv-jobTargets.cmake")

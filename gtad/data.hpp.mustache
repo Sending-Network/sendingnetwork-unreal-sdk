@@ -1,0 +1,70 @@
+{{>preamble}}
+#pragma once
+
+#include "types.hpp"
+{{#imports}}
+#include {{_}}{{/imports}}
+
+namespace Kazv::Api {
+{{#models}}
+    {{#model}}
+{{>docCommentShort}}
+struct {{name}}{{#parents?}} : {{#parents}}{{name}}{{>cjoin}}{{/parents}}{{/parents?}}
+{       {{#vars}}
+
+    {{>docCommentShort}}
+    {{>maybeOmittableType}} {{nameCamelCase}};
+        {{/vars}}{{#propertyMap}}
+
+    {{>docCommentShort}}
+    {{>maybeOmittableType}} {{nameCamelCase}};
+        {{/propertyMap}}
+};
+
+}
+namespace nlohmann
+{
+using namespace Kazv;
+using namespace Kazv::Api;
+template<>
+struct adl_serializer<{{qualifiedName}}> {
+{{#in?}}
+  static void to_json(json& jo, const {{qualifiedName}} &pod)
+  {
+  if (! jo.is_object()) { jo = json::object(); }
+  {{#parents}}{{!assume no more one parent}}
+    jo = static_cast<const {{name}} &>(pod);
+  {{/parents}}
+  {{#propertyMap}}
+    addPropertyMapToJson(jo, pod.{{nameCamelCase}});
+  {{/propertyMap}}
+  {{#vars}}
+    {{#required?}}jo["{{baseName}}"s] = pod.{{nameCamelCase}};{{/required?}}
+    {{^required?}}addToJsonIfNeeded(jo, "{{baseName}}"s, pod.{{nameCamelCase}});{{/required?}}
+  {{/vars}}
+  }
+{{/in?}}
+{{#out?}}
+  static void from_json(const json &jo, {{qualifiedName}}& result)
+  {
+  {{#parents}}
+    static_cast<{{name}} &{{!of the parent!}}>(result) = jo;
+  {{/parents}}
+  {{#vars}}
+    if (jo.contains("{{baseName}}"s)) {
+      result.{{nameCamelCase}} = jo.at("{{baseName}}"s);
+    }
+  {{/vars}}
+  {{#propertyMap}}
+    result.{{nameCamelCase}} = jo;
+  {{/propertyMap}}
+  }
+{{/out?}}
+};
+    }
+
+    namespace Kazv::Api
+    {
+    {{/model}}
+{{/models}}
+} // namespace Kazv::Api

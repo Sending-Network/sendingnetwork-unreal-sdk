@@ -1,0 +1,185 @@
+{{>preamble}}
+#pragma once
+
+#include "basejob.hpp"
+{{#imports}}
+#include {{_}}{{/imports}}
+
+namespace Kazv::Api {
+{{#operations.operation}}
+
+/*!{{>docCommentSummary}}{{#description}}
+ * {{_}}{{/description}}
+ */
+class {{camelCaseOperationId}}Job : public BaseJob {
+public:
+{{#models}}
+  // Inner data structures
+  {{#model}}
+
+    {{>docCommentShort}}
+    struct {{name}}{{#parents?}} :
+      {{#parents}}{{name}}{{>cjoin}}{{/parents}}{{/parents?}}
+        {
+        {{#vars}}
+          {{>docCommentShort}}
+          {{>maybeOmittableType}} {{nameCamelCase}};
+        {{/vars}}
+        {{#propertyMap}}
+          {{>docCommentShort}}
+          {{>maybeOmittableType}} {{nameCamelCase}};
+        {{/propertyMap}}
+        };
+  {{/model}}
+
+{{/models}}
+
+{{#responses}}
+
+class JobResponse : public Response
+{
+
+public:
+  JobResponse(Response r);
+  bool success() const;
+  {{#normalResponse?}}{{#allProperties?}}
+
+    // Result properties
+        {{#headers}}
+
+    {{>nonInlineResponseSignature}}
+    {
+        auto it = header->find("{{baseName}}");
+        if (it != header->end()) {
+            return it->second;
+        } else {
+            return std::nullopt;
+        }
+    }
+        {{/headers}}
+        {{#inlineResponse}}
+
+    {{>docCommentShort}}
+    {{#producesNonJson?}}
+    inline Body {{paramName}}() const
+    {
+    return body;
+    }
+    {{/producesNonJson?}}
+    {{^producesNonJson?}}
+    {{dataType.name}} {{paramName}}() const
+    {
+    return
+      std::move(jsonBody().get()).get<{{dataType.name}}>()
+    ;
+    }
+    {{/producesNonJson?}}
+        {{/inlineResponse}}
+        {{#properties}}
+
+    {{!there's nothing in #properties if the response is inline}}
+    {{>nonInlineResponseSignature}};
+        {{/properties}}
+    {{/allProperties?}}{{/normalResponse?}}
+
+};
+{{/responses}}
+          static constexpr auto needsAuth() {
+          return {{^skipAuth}}true{{/skipAuth}}
+            {{#skipAuth}}false{{/skipAuth}};
+              }
+
+
+// Construction/destruction
+
+{{#allParams?}}
+  /*!{{>docCommentSummary}}
+  {{#allParams}}
+    * \param {{nameCamelCase}}{{#description}}
+    *   {{_}}{{/description}}{{#_join}}
+    * {{/_join}}
+  {{/allParams}}
+    */
+  {{/allParams?}}{{^allParams?}}
+        {{#summary}}
+    /// {{summary}}
+        {{/summary}}
+    {{/allParams?}}
+    explicit {{camelCaseOperationId}}Job(std::string serverUrl
+    {{^skipAuth}}, std::string _accessToken{{/skipAuth}}
+      {{#allParams?}},{{/allParams?}}
+        {{#allParams}}{{>joinedParamDecl}}{{/allParams}}
+        {{#producesNonJson?}}, std::optional<FileDesc> downloadTo = std::nullopt{{/producesNonJson?}});
+    {{^hasBody?}}
+
+    {{/hasBody?}}
+
+    static BaseJob::Query buildQuery(
+    {{#queryParams}}{{>joinedParamDef}}{{/queryParams}});
+
+      static BaseJob::Body buildBody({{#allParams}}{{>joinedParamDef}}{{/allParams}});
+
+        {{#headerParams?}}
+          static std::map<std::string, std::string> buildHeader({{#headerParams}}{{>joinedParamDef}}{{/headerParams}});
+        {{/headerParams?}}
+
+        {{#producesNonJson?}}
+          static const immer::array<std::string> expectedContentTypes;
+        {{/producesNonJson?}}
+
+      {{camelCaseOperationId}}Job withData(JsonWrap j) &&;
+      {{camelCaseOperationId}}Job withData(JsonWrap j) const &;
+      };
+      {{#responses}}
+      using {{camelCaseOperationId}}Response = {{camelCaseOperationId}}Job::JobResponse;
+      {{/responses}}
+      } {{! namespace Kazv::Api}}
+      namespace nlohmann
+      {
+      using namespace Kazv;
+      using namespace Kazv::Api;
+    {{#models.model}}
+      template<>
+      struct adl_serializer<{{qualifiedName}}> {
+
+  static void to_json(json& jo, const {{qualifiedName}} &pod)
+  {
+  if (! jo.is_object()) { jo = json::object(); }
+  {{#parents}}{{!assume no more one parent}}
+    jo = static_cast<const {{name}} &>(pod);
+    //nlohmann::to_json(jo, static_cast<const {{name}} &>(pod));
+  {{/parents}}
+  {{#propertyMap}}
+    addPropertyMapToJson(jo, pod.{{nameCamelCase}});
+  {{/propertyMap}}
+  {{#vars}}
+    {{#required?}}jo["{{baseName}}"s] = pod.{{nameCamelCase}};{{/required?}}
+    {{^required?}}addToJsonIfNeeded(jo, "{{baseName}}"s, pod.{{nameCamelCase}});{{/required?}}
+  {{/vars}}
+  }
+
+  static void from_json(const json &jo, {{qualifiedName}}& result)
+  {
+  {{#parents}}
+    static_cast<{{name}} &{{!of the parent!}}>(result) = jo;
+    //nlohmann::from_json(jo, static_cast<const {{name}} &{{!of the parent!}}>(result));
+  {{/parents}}
+  {{#vars}}
+    if (jo.contains("{{baseName}}"s)) {
+      result.{{nameCamelCase}} = jo.at("{{baseName}}"s);
+    }
+  {{/vars}}
+  {{#propertyMap}}
+    result.{{nameCamelCase}} = jo;
+  {{/propertyMap}}
+  }
+
+};
+    {{/models.model}}
+    }
+
+    namespace Kazv::Api
+    {
+{{/operations.operation}}
+
+} // namespace Kazv::Api
